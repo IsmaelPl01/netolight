@@ -1,0 +1,16 @@
+FROM python:3.11.3
+
+RUN rm /etc/localtime && ln -s /usr/share/zoneinfo/America/Santo_Domingo /etc/localtime
+
+WORKDIR /opt/netolight/api
+
+RUN curl -sSL https://install.python-poetry.org | \
+    POETRY_HOME=/usr/local POETRY_VERSION=1.4.0 python -
+
+COPY api .
+
+RUN poetry install
+
+ENV PYTHONPATH=/opt/netolight/api
+
+CMD ./dev-run.sh

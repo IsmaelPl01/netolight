@@ -1,0 +1,144 @@
+image: atlassian/default-image:4
+
+definitions:
+  services:
+    docker:
+      memory: 3072
+
+pipelines:
+  branches:
+
+    dev:
+      - step:
+          name: Setup tags
+          script:
+            - echo "DIMMER_TAG=nldevcr.azurecr.io/nl-dimmer:$(make -s version)-rc-$(date +%s)" > env.sh
+            - echo "API_TAG=nldevcr.azurecr.io/nl-api:$(make -s version)-rc-$(date +%s)" >> env.sh
+            - echo "WEB_TAG=nldevcr.azurecr.io/nl-web:$(make -s version)-rc-$(date +%s)" >> env.sh
+          artifacts:
+            - env.sh
+
+      - parallel:
+
+          - step:
+              name: Build & push dimmer
+              caches:
+                - docker
+              services:
+                - docker
+              script:
+                - source env.sh
+                - docker build -f dimmer/Dockerfile -t $DIMMER_TAG .
+                - docker login nldevcr.azurecr.io -u $AZURE_APP_ID -p $AZURE_PASSWORD
+                - docker push $DIMMER_TAG
+
+          - step:
+              name: Build & push api
+              caches:
+                - docker
+              services:
+                - docker
+              script:
+                - source env.sh
+                - docker build -f api/Dockerfile -t $API_TAG .
+                - docker login nldevcr.azurecr.io -u $AZURE_APP_ID -p $AZURE_PASSWORD
+                - docker push $API_TAG
+
+          - step:
+              name: Build & push web
+              size: 2x
+              caches:
+                - docker
+              services:
+                - docker
+              script:
+                - source env.sh
+                - docker build -f web/Dockerfile -t $WEB_TAG .
+                - docker login nldevcr.azurecr.io -u $AZURE_APP_ID -p $AZURE_PASSWORD
+                - docker push $WEB_TAG
+
+      - step:
+          name: Deploy
+          deployment: dev
+          image: mcr.microsoft.com/azure-cli:2.51.0
+          script:
+            - source env.sh
+
+            - az login
+                --service-principal
+                --username $AZURE_APP_ID
+                --password $AZURE_PASSWORD
+                --tenant $AZURE_TENANT_ID
+
+            - az container create
+                --resource-group nldevrg
+                --name nl-dimmer-dev-co
+                --image $DIMMER_TAG
+                --registry-login-server nldevcr.azurecr.io
+                --registry-username $ACR_USERNAME
+                --registry-password $ACR_PASSWORD
+                --ports 4000
+                --vnet nl-main-dev-vnet
+                --subnet nl-dimmer-dev-snet
+                --environment-variables
+                  NL_DIMMER_HOST=0.0.0.0
+                  NL_DIMMER_PORT=4000
+                  POSTGRES_URI=$NL_DIMMER_POSTGRES_URI
+
+            - DIMMER_IP=$(az container show -n nl-dimmer-dev-co -g nldevrg --query ipAddress.ip -o tsv)
+            - az network private-dns record-set a update
+                --zone-name private.nl.com
+                --resource-group nldevrg
+                --name dimmer
+                --set aRecords[0].ipv4Address=$DIMMER_IP
+
+            - az container create
+                --resource-group nldevrg
+                --name nl-api-dev-co
+                --image $API_TAG
+                --registry-login-server nldevcr.azurecr.io
+                --registry-username $ACR_USERNAME
+                --registry-password $ACR_PASSWORD
+                --ports 5000
+                --vnet nl-main-dev-vnet
+                --subnet nl-api-dev-snet
+                --environment-variables
+                  POSTGRES_URI=$NL_API_POSTGRES_URI
+                  NL_API_PORT=5000
+                  NL_API_HOST=localhost
+                  NL_API_URL=http://20.10.204.121:5000
+                  NL_API_SECRET_KEY=$NL_API_SECRET_KEY
+                  NL_API_ALGORITHM=HS256
+                  NL_API_ACCESS_TOKEN_EXPIRE_MINUTES=240
+                  NL_DIMMER_HOST=dimmer.private.nl.com
+                  NL_DIMMER_PORT=4000
+                  CHIRPSTACK_SERVER_URL=chirpstack.private.nl.com:3000
+                  CHIRPSTACK_SERVER_JWT_TOKEN=$CHIRPSTACK_SERVER_JWT_TOKEN
+
+            - API_IP=$(az container show -n nl-api-dev-co -g nldevrg --query ipAddress.ip -o tsv)
+            - az network private-dns record-set a update
+                --zone-name private.nl.com
+                --resource-group nldevrg
+                --name api
+                --set aRecords[0].ipv4Address=$API_IP
+
+            - az container create
+                --resource-group nldevrg
+                --name nl-web-dev-co
+                --image $WEB_TAG
+                --registry-login-server nldevcr.azurecr.io
+                --registry-username $ACR_USERNAME
+                --registry-password $ACR_PASSWORD
+                --ports 80
+                --vnet nl-main-dev-vnet
+                --subnet nl-web-dev-snet
+                --environment-variables
+                  NL_API_PORT=5000
+                  NL_API_HOST=api.private.nl.com
+
+            - WEB_IP=$(az container show -n nl-web-dev-co -g nldevrg --query ipAddress.ip -o tsv)
+            - az network private-dns record-set a update
+                --zone-name private.nl.com
+                --resource-group nldevrg
+                --name web
+                --set aRecords[0].ipv4Address=$WEB_IP

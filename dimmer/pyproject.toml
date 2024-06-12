@@ -1,0 +1,34 @@
+[tool.poetry]
+name = "dimmer"
+version = "0.1.0"
+description = "netolight dimmer"
+authors = []
+packages = [{include = "dimmer"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+sqlalchemy = "1.4.48"
+psycopg2 = "2.9.6"
+tenacity = "8.2.2"
+chirpstack-api = "4.3.1"
+python-dotenv = "1.0.0"
+apscheduler = "3.9.1"
+rpyc = "5.3.1"
+
+[tool.poetry.group.test.dependencies]
+pytest = "^7.3.1"
+pytest-mock = "*"
+
+[tool.poetry.group.dev.dependencies]
+mypy = "^1.2.0"
+black = "^23.3.0"
+isort = "^5.12.0"
+autoflake = "^2.1.1"
+flake8 = "^6.0.0"
+pytest = "^7.3.1"
+pytest-cov = "^4.0.0"
+watchdog = { extras = ["watchmedo"], version = "^3.0.0" }
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

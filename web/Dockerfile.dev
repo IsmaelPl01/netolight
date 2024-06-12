@@ -1,0 +1,17 @@
+FROM node:16
+
+RUN rm /etc/localtime && ln -s /usr/share/zoneinfo/America/Santo_Domingo /etc/localtime
+
+WORKDIR /opt/netolight/web
+
+COPY web/package*.json web/jsconfig.json web/.eslintrc web/.prettierrc ./
+
+RUN npm install
+
+COPY web/public public
+COPY web/src src
+
+ARG WEB_PORT
+EXPOSE $WEB_PORT
+
+CMD ["npm", "start"]

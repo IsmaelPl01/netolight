@@ -1,0 +1,26 @@
+services:
+
+  api:
+    build:
+      dockerfile: api/Dockerfile.dev
+    volumes:
+      - ./build/test-reports:/opt/netolight/build/test-reports
+      - ./api/api:/opt/netolight/api/api
+      - ./api/migrations:/opt/netolight/api/migrations
+
+  dimmer:
+    build:
+      dockerfile: dimmer/Dockerfile.dev
+    volumes:
+      - ./build/test-reports:/opt/netolight/build/test-reports
+      - ./dimmer/dimmer:/opt/netolight/dimmer/dimmer
+
+  web:
+    build:
+      dockerfile: web/Dockerfile.dev
+    volumes:
+      - ./web/package.json:/opt/netolight/web/package.json
+      - ./web/public:/opt/netolight/web/public
+      - ./web/src:/opt/netolight/web/src
+    ports:
+      - 8080:8080

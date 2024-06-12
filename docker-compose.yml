@@ -1,0 +1,98 @@
+services:
+
+  web:
+    image: nl-web:0.1.0
+    build:
+      dockerfile: web/Dockerfile
+      context: .
+    ports:
+      - 80:80
+    env_file: .env
+
+  api:
+    image: nl-api:0.1.0
+    build:
+      dockerfile: api/Dockerfile
+      context: .
+    ports:
+      - 5000:5000
+    env_file: .env
+    depends_on:
+      - dimmer
+
+  dimmer:
+    image: nl-dimmer:0.1.0
+    build:
+      dockerfile: dimmer/Dockerfile
+      context: .
+    ports:
+      - 4000:4000
+    env_file: .env
+    depends_on:
+      - chirpstack
+
+  chirpstack-rest-api:
+    image: chirpstack/chirpstack-rest-api:4
+    restart: unless-stopped
+    command: --server chirpstack:3000 --bind 0.0.0.0:3001 --insecure
+    ports:
+      - 3001:3001
+    depends_on:
+      - chirpstack
+
+  chirpstack:
+    image: chirpstack/chirpstack:4
+    command: -c /etc/chirpstack
+    restart: unless-stopped
+    volumes:
+      - ./configuration/chirpstack:/etc/chirpstack
+    depends_on:
+      - chirpstack-gateway-bridge
+      - postgres
+      - redis
+    environment:
+      - CHIRPSTACK_BIND=0.0.0.0:3000
+      - MQTT_BROKER_HOST=mosquitto
+      - REDIS_URI=redis://redis
+      - POSTGRES_URI=postgres://chirpstack:chirpstack@postgres/chirpstack
+    ports:
+      - 3000:3000
+
+  chirpstack-gateway-bridge:
+    image: chirpstack/chirpstack-gateway-bridge:4
+    restart: unless-stopped
+    ports:
+      - 1700:1700/udp
+    volumes:
+      - ./configuration/chirpstack-gateway-bridge:/etc/chirpstack-gateway-bridge
+    depends_on:
+      - mosquitto
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    ports:
+      - 1883:1883
+    volumes:
+      - ./configuration/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+
+  postgres:
+    image: postgres:14-alpine
+    restart: unless-stopped
+    volumes:
+      - ./configuration/postgresql/initdb:/docker-entrypoint-initdb.d
+      - $NL_POSTGRES_DATA:/var/lib/postgresql/data
+    environment:
+      - TZ=America/Santo_Domingo
+      - PGTZ=America/Santo_Domingo
+      - POSTGRES_PASSWORD=$NL_POSTGRES_PASSWORD
+    ports:
+      - 5432:5432
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - $NL_REDIS_DATA:/data
+    ports:
+      - 6379:6379

@@ -1,0 +1,141 @@
+[tool.poetry]
+name = "api"
+version = "0.1.0"
+description = "netolight REST API"
+authors = []
+
+[tool.poetry.dependencies]
+python = "^3.11"
+gunicorn = "^20.1.0"
+fastapi = {extras = ["all"], version = "^0.110.0"}
+httpx = "^0.23.0"
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}
+pyhumps = "^3.8.0"
+sqlalchemy = {extras = ["mypy"], version = "^2.0.12"}
+asyncpg = "^0.29.0"
+tenacity = "^8.2.2"
+chirpstack-api = "4.7.0"
+rpyc = "^5.3.1"
+python-multipart = "^0.0.9"
+python-dateutil = "^2.8.2"
+pytz = "^2023.3"
+fastapi-utilities = "^0.2.0"
+redis = {extras = ["hiredis"], version = "^5.0.4"}
+
+[tool.poetry.group.test.dependencies]
+pytest = "^7.3.1"
+pytest-mock = "*"
+
+[tool.poetry.group.dev.dependencies]
+uvicorn = {extras=["standard"], version="^0.22.0"}
+poethepoet = "^0.24.4"
+mypy = "^1.8.0"
+ruff = "^0.2.1"
+ruff-lsp = "^0.0.52"
+python-lsp-server = "^1.10.0"
+python-lsp-ruff = "^2.1.0"
+pylsp-mypy = "^0.6.8"
+pyls-memestra = "^0.0.16"
+pylsp-rope = "^0.1.11"
+pytest = "^7.3.1"
+pytest-cov = "^4.0.0"
+pytest-asyncio = "^0.23.5.post1"
+alembic = "^1.11.1"
+
+[tool.poe]
+envfile = ".env"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[tool.mypy]
+mypy_path = ["api"]
+namespace_packages = true
+explicit_package_bases = true
+exclude = "venv"
+hide_error_codes = false
+plugins = ["sqlalchemy.ext.mypy.plugin"]
+
+[tool.pylsp-mypy]
+enabled = true
+live_mode = true
+strict = false
+exclude = ["tests/*"]
+
+[[tool.mypy.overrides]]
+disable_error_code = ["method-assign", "no-untyped-def", "attr-defined"]
+module = "tests.*"
+
+[tool.ruff]
+line-length = 80
+src = ["api"]
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = ["COM812", "ISC001"]
+
+[tool.poe.tasks.test]
+cmd = "pytest"
+help = "Run tests"
+
+[tool.ruff.lint.pep8-naming]
+classmethod-decorators = ["pydantic.validator", "pydantic.root_validator"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.extend-per-file-ignores]
+"test/**/*.py" = ["S101", "ANN001", "ANN201", "D100", "D103", "D104", "PLR2004"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["mt"]
+
+[tool.ruff.lint.pyupgrade]
+keep-runtime-typing = true
+
+[tool.ruff.lint.flake8-quotes]
+docstring-quotes = "double"
+inline-quotes = "single"
+multiline-quotes = "double"
+
+[tool.ruff.format]
+indent-style = "space"
+quote-style = "single"
+
+[tool.poe.tasks.lint]
+ignore_fail = "return_non_zero"
+sequence = ["format", "ruff", "mypy"]
+help = "Run all linting checks"
+
+[tool.poe.tasks.mypy]
+cmd = "mypy -p api"
+help = "Run Mypy checks"
+
+[tool.poe.tasks.format]
+cmd = "ruff format"
+help = "Format code with Ruff"
+
+[tool.poe.tasks.ruff]
+cmd = "ruff check api"
+help = "Run Ruff checks"
+
+[tool.poe.tasks."api:run"]
+cmd = "uvicorn api.main:app --reload --port $NL_API_PORT --host $NL_API_BIND --log-level error"
+help = "Run api"
+
+
+
+
+
+[tool.poetry.group.types.dependencies]
+types-pytz = "^2024.1.0.20240203"
+types-python-dateutil = "^2.8.19.20240106"
+types-passlib = "^1.7.7.20240106"
+types-python-jose = "^3.3.4.20240106"
+types-protobuf = "^4.24.0.20240129"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -1,0 +1,14 @@
+FROM python:3.11.3
+
+WORKDIR /opt/netolight/dimmer
+
+RUN curl -sSL https://install.python-poetry.org | \
+    POETRY_HOME=/usr/local POETRY_VERSION=1.4.0 python -
+
+COPY dimmer .
+
+RUN poetry install
+
+ENV PYTHONPATH=/opt/netolight/dimmer
+
+CMD poetry run watchmedo auto-restart --recursive --directory=/opt/netolight/dimmer --pattern=*.py --ignore-pattern=*/.* -- -- python -m dimmer.main
