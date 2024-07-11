@@ -29,7 +29,8 @@ import {
   TableRow,
   DialogActions,
   DialogContent,
-  DialogTitle
+  DialogTitle,
+  Slider
 } from '@mui/material';
 
 import { LocalizationProvider } from '@mui/x-date-pickers';
@@ -73,6 +74,9 @@ const StreetlampCli = ({ devEui, onClose }) => {
   const [streetlampState, setStreetlampState] = useState(null);
   const [latestCmdSentDate, setLatestCmdSentDate] = useState(null);
 
+  const [showSlider, setShowSlider] = useState(false);
+  const [sliderValue, setSliderValue] = useState(0);
+
   const StreetlampSchema = Yup.object().shape({ command: Yup.string() });
 
   const handleClose = () => {
@@ -97,7 +101,7 @@ const StreetlampCli = ({ devEui, onClose }) => {
       }
     }
   });
-  const { handleSubmit, isSubmitting, getFieldProps } = formik;
+  const { handleSubmit, isSubmitting } = formik;
 
   const fetchLatestState = () => {
     return async () => {
@@ -261,26 +265,50 @@ const StreetlampCli = ({ devEui, onClose }) => {
                       <Grid item xs={12}>
                         <Stack spacing={1.25}>
                           <InputLabel htmlFor="command">{intl.formatMessage({ id: 'streetlamp.cli-form.field.command.label' })}</InputLabel>
-                          <Select fullWidth id="command" {...getFieldProps('command')}>
+                          <Select
+                            fullWidth
+                            id="command"
+                            value={formik.values.command}
+                            onChange={(e) => {
+                              formik.setFieldValue('command', e.target.value);
+                              if (e.target.value === 'dim') {
+                                setShowSlider(true);
+                              } else {
+                                setShowSlider(false);
+                              }
+                            }}
+                          >
                             <MenuItem value="[choose]">
                               {intl.formatMessage({ id: 'streetlamp.cli-form.field.command.placeholder' })}
                             </MenuItem>
-                            {['turn_on', 'turn_off'].map((c, i) => {
-                              return (
-                                <MenuItem key={i} value={c}>
-                                  {c.toUpperCase()}
-                                </MenuItem>
-                              );
-                            })}
-                            {[...Array(101).keys()].map((c, i) => {
-                              return (
-                                <MenuItem key={i} value={`dim_${c.toString().padStart(2, '0')}`}>
-                                  {`DIM_${c.toString().padStart(2, '0')}`}
-                                </MenuItem>
-                              );
-                            })}
+                            {['turn_on', 'turn_off', 'dim'].map((c, i) => (
+                              <MenuItem key={i} value={c}>
+                                {c.toUpperCase()}
+                              </MenuItem>
+                            ))}
                           </Select>
                         </Stack>
+                      </Grid>
+                      <Grid item xs={12}>
+                        {showSlider && (
+                          <Stack spacing={1.25}>
+                            <InputLabel htmlFor="slider">{intl.formatMessage({ id: 'streetlamp.cli-form.field.slider.label' })}</InputLabel>
+                            <Slider
+                              id="slider"
+                              value={sliderValue}
+                              onChange={(e, newValue) => {
+                                setSliderValue(newValue);
+                                formik.setFieldValue('command', `dim_${newValue.toString().padStart(2, '0')}`);
+                              }}
+                              aria-labelledby="slider"
+                              valueLabelDisplay="auto"
+                              step={1}
+                              marks
+                              min={0}
+                              max={100}
+                            />
+                          </Stack>
+                        )}
                       </Grid>
                       <Grid item xs={12}>
                         <Button type="submit" variant="contained" disabled={isSubmitting}>

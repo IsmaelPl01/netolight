@@ -1064,7 +1064,7 @@ class GatewayService:
     def update(
         self: Self, tid: str, gid: str, name: str, description: str
     ) -> dict:
-        """Create a gateway."""
+        """Update a gateway."""
         return self.chirpstack_serv.gateway.update(tid, gid, name, description)
 
     def delete(self: Self, gid: str) -> dict:

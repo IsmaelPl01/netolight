@@ -4,7 +4,9 @@ import { useIntl } from 'react-intl';
 import { useDispatch } from 'react-redux';
 import humps from 'humps';
 
-import { Button, Checkbox, Divider, Grid, InputLabel, Stack, TextField, FormControlLabel } from '@mui/material';
+import {
+  Button, Checkbox, Divider, Grid, InputLabel, Stack, TextField, FormControlLabel, MenuItem, Select, FormControl, FormHelperText, Slider
+} from '@mui/material';
 import { DialogActions, DialogContent, DialogTitle } from '@mui/material';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -44,11 +46,31 @@ const getInitialValues = (dimmingProfile, user) => {
   return newDimmingProfile;
 };
 
+const parseDimCommand = (command) => {
+  if (command.startsWith('dim_')) {
+    const value = command.replace('dim_', '');
+    const formattedValue = value.length === 1 ? `0${value}` : value;
+    return { type: 'dim_valor', value: parseInt(formattedValue, 10) };
+  }
+  return { type: command, value: '' };
+};
+
 const AddDimmingProfile = ({ dimmingProfile, onCancel, onSuccess }) => {
   const intl = useIntl();
   const dispatch = useDispatch();
   const { user } = useAuth();
-  const [active, setActive] = useState(false);
+  const [active, setActive] = useState(dimmingProfile?.active || false);
+  const [commands, setCommands] = useState({
+    sunsetDimCmd0: parseDimCommand(dimmingProfile?.sunsetDimCmd0 || ''),
+    sunsetDimCmd1: parseDimCommand(dimmingProfile?.sunsetDimCmd1 || ''),
+    h2000DimCmd: parseDimCommand(dimmingProfile?.h2000DimCmd || ''),
+    h2200DimCmd: parseDimCommand(dimmingProfile?.h2200DimCmd || ''),
+    h0000DimCmd: parseDimCommand(dimmingProfile?.h0000DimCmd || ''),
+    h0200DimCmd: parseDimCommand(dimmingProfile?.h0200DimCmd || ''),
+    h0400DimCmd: parseDimCommand(dimmingProfile?.h0400DimCmd || ''),
+    sunriseDimCmd0: parseDimCommand(dimmingProfile?.sunriseDimCmd0 || ''),
+    sunriseDimCmd1: parseDimCommand(dimmingProfile?.sunriseDimCmd1 || '')
+  });
 
   const DimmingProfileSchema = Yup.object().shape({
     name: Yup.string().required(intl.formatMessage({ id: 'dimmingProfile.form.validation.name.required' })),
@@ -70,10 +92,33 @@ const AddDimmingProfile = ({ dimmingProfile, onCancel, onSuccess }) => {
     formik.setErrors({});
   };
 
+  const handleCommandChange = (e, command) => {
+    const value = e.target.value;
+    setCommands((prev) => ({
+      ...prev,
+      [command]: { type: value, value: prev[command].value }
+    }));
+  };
+
+  const handleSliderChange = (event, newValue, command) => {
+    setCommands((prev) => ({
+      ...prev,
+      [command]: { type: prev[command].type, value: newValue }
+    }));
+  };
+
   const formik = useFormik({
     initialValues: getInitialValues(dimmingProfile, user),
     validationSchema: DimmingProfileSchema,
     onSubmit: async (values, { setSubmitting }) => {
+      const formatDimCommand = (type, value) => {
+        if (type === 'dim_valor') {
+          const formattedValue = value < 10 ? `0${value}` : value;
+          return `dim_${formattedValue}`;
+        }
+        return type;
+      };
+
       const newDimmingProfile = {
         accountId: user.accountId,
         multicastGroupId: values.multicastGroupId,
@@ -81,19 +126,19 @@ const AddDimmingProfile = ({ dimmingProfile, onCancel, onSuccess }) => {
         name: values.name,
         description: values.description,
         color: values.color,
-        sunsetDimCmd0: values.sunsetDimCmd0,
-        sunsetDimCmd1: values.sunsetDimCmd1,
-        h2000DimCmd: values.h2000DimCmd,
-        h2200DimCmd: values.h2200DimCmd,
-        h0000DimCmd: values.h0000DimCmd,
-        h0200DimCmd: values.h0200DimCmd,
-        h0400DimCmd: values.h0400DimCmd,
-        sunriseDimCmd0: values.sunriseDimCmd0,
-        sunriseDimCmd1: values.sunriseDimCmd1
+        sunsetDimCmd0: formatDimCommand(commands.sunsetDimCmd0.type, commands.sunsetDimCmd0.value),
+        sunsetDimCmd1: formatDimCommand(commands.sunsetDimCmd1.type, commands.sunsetDimCmd1.value),
+        h2000DimCmd: formatDimCommand(commands.h2000DimCmd.type, commands.h2000DimCmd.value),
+        h2200DimCmd: formatDimCommand(commands.h2200DimCmd.type, commands.h2200DimCmd.value),
+        h0000DimCmd: formatDimCommand(commands.h0000DimCmd.type, commands.h0000DimCmd.value),
+        h0200DimCmd: formatDimCommand(commands.h0200DimCmd.type, commands.h0200DimCmd.value),
+        h0400DimCmd: formatDimCommand(commands.h0400DimCmd.type, commands.h0400DimCmd.value),
+        sunriseDimCmd0: formatDimCommand(commands.sunriseDimCmd0.type, commands.sunriseDimCmd0.value),
+        sunriseDimCmd1: formatDimCommand(commands.sunriseDimCmd1.type, commands.sunriseDimCmd1.value)
       };
 
-      if (dimmingProfile) {
-        try {
+      try {
+        if (dimmingProfile) {
           await axios.put(`/api/dimming_profiles/${dimmingProfile.id}`, humps.decamelizeKeys(newDimmingProfile));
           dispatch(
             openSnackbar({
@@ -108,12 +153,7 @@ const AddDimmingProfile = ({ dimmingProfile, onCancel, onSuccess }) => {
             })
           );
           onSuccess();
-        } catch (error) {
-          formik.setErrors(unpackErrors(error.detail));
-          setSubmitting(false);
-        }
-      } else {
-        try {
+        } else {
           await axios.post('/api/dimming_profiles/', humps.decamelizeKeys(newDimmingProfile));
           dispatch(
             openSnackbar({
@@ -128,15 +168,53 @@ const AddDimmingProfile = ({ dimmingProfile, onCancel, onSuccess }) => {
             })
           );
           onSuccess();
-        } catch (error) {
-          formik.setErrors(unpackErrors(error.detail));
-          setSubmitting(false);
         }
+      } catch (error) {
+        formik.setErrors(unpackErrors(error.response.data.detail));
+        setSubmitting(false);
       }
     }
   });
 
-  const { errors, touched, handleSubmit, isSubmitting, getFieldProps } = formik;
+  const { errors, touched, handleSubmit, isSubmitting, getFieldProps, setFieldValue } = formik;
+
+  const renderCommandField = (label, id, command) => (
+    <Grid container spacing={2} alignItems="center">
+      <Grid item xs={4}>
+        <InputLabel htmlFor={id}>{label}</InputLabel>
+      </Grid>
+      <Grid item xs={4}>
+        <FormControl fullWidth error={Boolean(touched[command] && errors[command])}>
+          <Select
+            id={id}
+            value={commands[command].type}
+            onChange={(e) => handleCommandChange(e, command)}
+            displayEmpty
+          >
+            <MenuItem value=""><em>None</em></MenuItem>
+            <MenuItem value="turn_on">Turn On</MenuItem>
+            <MenuItem value="turn_off">Turn Off</MenuItem>
+            <MenuItem value="dim_valor">Dim</MenuItem>
+          </Select>
+          <FormHelperText>{touched[command] && errors[command]}</FormHelperText>
+        </FormControl>
+      </Grid>
+      {commands[command].type === 'dim_valor' && (
+        <Grid item xs={4}>
+          <Slider
+            value={commands[command].value}
+            onChange={(e, newValue) => handleSliderChange(e, newValue, command)}
+            aria-labelledby={`${id}-slider`}
+            valueLabelDisplay="auto"
+            step={1}
+            marks
+            min={0}
+            max={100}
+          />
+        </Grid>
+      )}
+    </Grid>
+  );
 
   return (
     <FormikProvider value={formik}>
@@ -187,14 +265,23 @@ const AddDimmingProfile = ({ dimmingProfile, onCancel, onSuccess }) => {
                       <InputLabel htmlFor="dimming-profile-color">
                         {intl.formatMessage({ id: 'dimmingProfile.form.field.color.label' })}
                       </InputLabel>
-                      <TextField
-                        fullWidth
-                        id="color"
-                        placeholder={intl.formatMessage({ id: 'dimmingProfile.form.field.color.placeholder' })}
-                        {...getFieldProps('color')}
-                        error={Boolean(touched.color && errors.color)}
-                        helperText={touched.color && errors.color}
-                      />
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <input
+                          type="color"
+                          id="color-picker"
+                          value={formik.values.color}
+                          onChange={(e) => setFieldValue('color', e.target.value)}
+                          style={{ width: '40px', height: '40px', border: 'none', padding: 0 }}
+                        />
+                        <TextField
+                          fullWidth
+                          id="color"
+                          placeholder={intl.formatMessage({ id: 'dimmingProfile.form.field.color.placeholder' })}
+                          {...getFieldProps('color')}
+                          error={Boolean(touched.color && errors.color)}
+                          helperText={touched.color && errors.color}
+                        />
+                      </Stack>
                     </Stack>
                   </Grid>
 
@@ -215,133 +302,57 @@ const AddDimmingProfile = ({ dimmingProfile, onCancel, onSuccess }) => {
                   </Grid>
 
                   <Grid item xs={12}>
-                    <Stack spacing={1.25}>
-                      <InputLabel htmlFor="plan">{intl.formatMessage({ id: 'dimmingProfile.form.field.plan.label' })}</InputLabel>
-
-                      <Grid container>
-                        <Grid item xs={6}>
-                          <TextField disabled fullWidth value="SUNSET" />
-                        </Grid>
-                        <Grid item xs={3}>
-                          <TextField
-                            fullWidth
-                            id="sunset-dim-cmd0"
-                            {...getFieldProps('sunsetDimCmd0')}
-                            error={Boolean(touched.sunsetDimCmd0 && errors.sunsetDimCmd0)}
-                            helperText={touched.sunsetDimCmd0 && errors.sunsetDimCmd0}
-                          />
-                        </Grid>
-
-                        <Grid item xs={3}>
-                          <TextField
-                            fullWidth
-                            id="sunset-dim-cmd1"
-                            {...getFieldProps('sunsetDimCmd1')}
-                            error={Boolean(touched.sunsetDimCmd1 && errors.sunsetDimCmd1)}
-                            helperText={touched.sunsetDimCmd1 && errors.sunsetDimCmd1}
-                          />
-                        </Grid>
+                    <InputLabel htmlFor="plan">{intl.formatMessage({ id: 'dimmingProfile.form.field.plan.label' })}</InputLabel>
+                    <Grid container spacing={2} alignItems="center">
+                      <Grid item xs={6}>
+                        <TextField disabled fullWidth value="SUNSET" />
                       </Grid>
-
-                      <Grid container>
-                        <Grid item xs={6}>
-                          <TextField disabled fullWidth value="20:00" />
-                        </Grid>
-                        <Grid item xs={6}>
-                          <TextField
-                            fullWidth
-                            id="h2000-dim-cmd"
-                            {...getFieldProps('h2000DimCmd')}
-                            error={Boolean(touched.h2000DimCmd && errors.h2000DimCmd)}
-                            helperText={touched.h2000DimCmd && errors.h2000DimCmd}
-                          />
-                        </Grid>
+                      <Grid item xs={6}>
+                        {renderCommandField('SUNSET Dim Command 0', 'sunset-dim-cmd0', 'sunsetDimCmd0')}
                       </Grid>
-
-                      <Grid container>
-                        <Grid item xs={6}>
-                          <TextField disabled fullWidth value="22:00" />
-                        </Grid>
-                        <Grid item xs={6}>
-                          <TextField
-                            fullWidth
-                            id="h2200-dim-cmd"
-                            {...getFieldProps('h2200DimCmd')}
-                            error={Boolean(touched.h2200DimCmd && errors.h2200DimCmd)}
-                            helperText={touched.h2200DimCmd && errors.h2200DimCmd}
-                          />
-                        </Grid>
+                      <Grid item xs={6}>
+                        {renderCommandField('SUNSET Dim Command 1', 'sunset-dim-cmd1', 'sunsetDimCmd1')}
                       </Grid>
-
-                      <Grid container>
-                        <Grid item xs={6}>
-                          <TextField disabled fullWidth value="00:00" />
-                        </Grid>
-                        <Grid item xs={6}>
-                          <TextField
-                            fullWidth
-                            id="h0000-dim-cmd"
-                            {...getFieldProps('h0000DimCmd')}
-                            error={Boolean(touched.h0000DimCmd && errors.h0000DimCmd)}
-                            helperText={touched.h0000DimCmd && errors.h0000DimCmd}
-                          />
-                        </Grid>
+                      <Grid item xs={6}>
+                        <TextField disabled fullWidth value="20:00" />
                       </Grid>
-
-                      <Grid container>
-                        <Grid item xs={6}>
-                          <TextField disabled fullWidth value="02:00" />
-                        </Grid>
-                        <Grid item xs={6}>
-                          <TextField
-                            fullWidth
-                            id="h0200-dim-cmd"
-                            {...getFieldProps('h0200DimCmd')}
-                            error={Boolean(touched.h0200DimCmd && errors.h0200DimCmd)}
-                            helperText={touched.h0200DimCmd && errors.h0200DimCmd}
-                          />
-                        </Grid>
+                      <Grid item xs={6}>
+                        {renderCommandField('20:00 Dim Command', 'h2000-dim-cmd', 'h2000DimCmd')}
                       </Grid>
-
-                      <Grid container>
-                        <Grid item xs={6}>
-                          <TextField disabled fullWidth value="04:00" />
-                        </Grid>
-                        <Grid item xs={6}>
-                          <TextField
-                            fullWidth
-                            id="h0400-dim-cmd"
-                            {...getFieldProps('h0400DimCmd')}
-                            error={Boolean(touched.h0400DimCmd && errors.h0400DimCmd)}
-                            helperText={touched.h0400DimCmd && errors.h0400DimCmd}
-                          />
-                        </Grid>
+                      <Grid item xs={6}>
+                        <TextField disabled fullWidth value="22:00" />
                       </Grid>
-
-                      <Grid container>
-                        <Grid item xs={6}>
-                          <TextField disabled fullWidth value="SUNRISE" />
-                        </Grid>
-                        <Grid item xs={3}>
-                          <TextField
-                            fullWidth
-                            id="sunrise-dim-cmd0"
-                            {...getFieldProps('sunriseDimCmd0')}
-                            error={Boolean(touched.sunriseDimCmd0 && errors.sunriseDimCmd0)}
-                            helperText={touched.sunriseDimCmd0 && errors.sunriseDimCmd0}
-                          />
-                        </Grid>
-                        <Grid item xs={3}>
-                          <TextField
-                            fullWidth
-                            id="sunrise-dim-cmd1"
-                            {...getFieldProps('sunriseDimCmd1')}
-                            error={Boolean(touched.sunriseDimCmd1 && errors.sunriseDimCmd1)}
-                            helperText={touched.sunriseDimCmd1 && errors.sunriseDimCmd1}
-                          />
-                        </Grid>
+                      <Grid item xs={6}>
+                        {renderCommandField('22:00 Dim Command', 'h2200-dim-cmd', 'h2200DimCmd')}
                       </Grid>
-                    </Stack>
+                      <Grid item xs={6}>
+                        <TextField disabled fullWidth value="00:00" />
+                      </Grid>
+                      <Grid item xs={6}>
+                        {renderCommandField('00:00 Dim Command', 'h0000-dim-cmd', 'h0000DimCmd')}
+                      </Grid>
+                      <Grid item xs={6}>
+                        <TextField disabled fullWidth value="02:00" />
+                      </Grid>
+                      <Grid item xs={6}>
+                        {renderCommandField('02:00 Dim Command', 'h0200-dim-cmd', 'h0200DimCmd')}
+                      </Grid>
+                      <Grid item xs={6}>
+                        <TextField disabled fullWidth value="04:00" />
+                      </Grid>
+                      <Grid item xs={6}>
+                        {renderCommandField('04:00 Dim Command', 'h0400-dim-cmd', 'h0400DimCmd')}
+                      </Grid>
+                      <Grid item xs={6}>
+                        <TextField disabled fullWidth value="SUNRISE" />
+                      </Grid>
+                      <Grid item xs={6}>
+                        {renderCommandField('SUNRISE Dim Command 0', 'sunrise-dim-cmd0', 'sunriseDimCmd0')}
+                      </Grid>
+                      <Grid item xs={6}>
+                        {renderCommandField('SUNRISE Dim Command 1', 'sunrise-dim-cmd1', 'sunriseDimCmd1')}
+                      </Grid>
+                    </Grid>
                   </Grid>
 
                   <Grid item xs={12}>

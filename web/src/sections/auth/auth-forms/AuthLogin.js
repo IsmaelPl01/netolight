@@ -1,6 +1,5 @@
 import React from 'react';
 import { Link as RouterLink } from 'react-router-dom';
-
 import {
   Button,
   Checkbox,
@@ -12,27 +11,27 @@ import {
   InputLabel,
   OutlinedInput,
   Stack,
-  Typography
+  Typography,
+  Snackbar,
+  Alert
 } from '@mui/material';
-
 import * as Yup from 'yup';
 import { Formik } from 'formik';
-
 import useAuth from 'hooks/useAuth';
 import useScriptRef from 'hooks/useScriptRef';
 import IconButton from 'components/@extended/IconButton';
 import AnimateButton from 'components/@extended/AnimateButton';
-
 import { EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
 
 const AuthLogin = () => {
   const [checked, setChecked] = React.useState(false);
   const [capsWarning, setCapsWarning] = React.useState(false);
+  const [showPassword, setShowPassword] = React.useState(false);
+  const [open, setOpen] = React.useState(false);
 
   const { isLoggedIn, login } = useAuth();
   const scriptedRef = useScriptRef();
 
-  const [showPassword, setShowPassword] = React.useState(false);
   const handleClickShowPassword = () => {
     setShowPassword(!showPassword);
   };
@@ -47,6 +46,10 @@ const AuthLogin = () => {
     } else {
       setCapsWarning(false);
     }
+  };
+
+  const handleClose = () => {
+    setOpen(false);
   };
 
   return (
@@ -69,6 +72,7 @@ const AuthLogin = () => {
                 setStatus({ success: false });
                 setErrors({ submit: err.message });
                 setSubmitting(false);
+                setOpen(true);
               }
             );
           } catch (err) {
@@ -77,6 +81,7 @@ const AuthLogin = () => {
               setStatus({ success: false });
               setErrors({ submit: err.message });
               setSubmitting(false);
+              setOpen(true);
             }
           }
         }}
@@ -149,7 +154,6 @@ const AuthLogin = () => {
                   )}
                 </Stack>
               </Grid>
-
               <Grid item xs={12} sx={{ mt: -1 }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={2}>
                   <FormControlLabel
@@ -190,6 +194,11 @@ const AuthLogin = () => {
           </form>
         )}
       </Formik>
+      <Snackbar open={open} autoHideDuration={6000} onClose={handleClose}>
+        <Alert onClose={handleClose} severity="error" sx={{ width: '100%' }}>
+          The email or password you entered is incorrect. Please try again.
+        </Alert>
+      </Snackbar>
     </>
   );
 };

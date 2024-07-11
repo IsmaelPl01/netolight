@@ -1,5 +1,7 @@
 import PropTypes from 'prop-types';
 import { useDispatch } from 'react-redux';
+import { useState, useEffect } from 'react';
+import axios from 'utils/axios';
 
 import { useTheme } from '@mui/material/styles';
 import {
@@ -18,7 +20,9 @@ import {
   Stack,
   TextField,
   Tooltip,
-  Typography
+  Typography,
+  Slider,
+  FormHelperText
 } from '@mui/material';
 import { LocalizationProvider, MobileDateTimePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -58,6 +62,9 @@ const AddEventFrom = ({ event, range, onCancel }) => {
   const dispatch = useDispatch();
   const isCreating = !event;
   const { user } = useAuth();
+  const [targetIds, setTargetIds] = useState([]);
+  const [showSlider, setShowSlider] = useState(false);
+  const [dimValue, setDimValue] = useState(50);
 
   const backgroundColor = [
     theme.palette.primary.main,
@@ -85,6 +92,26 @@ const AddEventFrom = ({ event, range, onCancel }) => {
     theme.palette.secondary.main,
     theme.palette.warning.main
   ];
+
+  useEffect(() => {
+    const fetchStreetlampIds = async () => {
+      try {
+        const response = await axios.get('/api/streetlamps');
+        console.log('API response:', response);
+        const data = response.data.data; // Ajustado para manejar data.data
+        
+        if (Array.isArray(data)) {
+          setTargetIds(data.map(streetlamp => streetlamp.device_eui)); // Asumiendo que 'device_eui' es el ID
+        } else {
+          console.error('Unexpected response format:', data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch streetlamp IDs:', error);
+      }
+    };
+
+    fetchStreetlampIds();
+  }, []);
 
   const EventSchema = Yup.object().shape({
     targetType: Yup.string().required('Target type is required'),
@@ -121,7 +148,7 @@ const AddEventFrom = ({ event, range, onCancel }) => {
           accountId: user.accountId,
           targetType: values.targetType,
           targetId: values.targetId,
-          command: values.command,
+          command: showSlider ? `dim_${dimValue}` : values.command,
           color: values.color,
           textColor: values.textColor,
           start: values.start,
@@ -167,6 +194,12 @@ const AddEventFrom = ({ event, range, onCancel }) => {
 
   const { values, errors, touched, handleSubmit, isSubmitting, getFieldProps, setFieldValue } = formik;
 
+  const handleCommandChange = (e) => {
+    const value = e.target.value;
+    setFieldValue('command', value);
+    setShowSlider(value === 'dim_valor');
+  };
+
   return (
     <FormikProvider value={formik}>
       <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -179,14 +212,12 @@ const AddEventFrom = ({ event, range, onCancel }) => {
                 <Stack spacing={1.25}>
                   <InputLabel htmlFor="cal-target-type">Target Type</InputLabel>
                   <Select fullWidth id="cal-target-type" {...getFieldProps('targetType')}>
-                    <MenuItem value="[choose]">[Choose a Target Type ]</MenuItem>
-                    {['device', 'device_group'].map((c, i) => {
-                      return (
-                        <MenuItem key={i} value={c}>
-                          {c.toUpperCase()}
-                        </MenuItem>
-                      );
-                    })}
+                    <MenuItem value="[choose]">[Choose a Target Type]</MenuItem>
+                    {['streetlamp', 'streetlamp_group'].map((c, i) => (
+                      <MenuItem key={i} value={c}>
+                        {c.toUpperCase()}
+                      </MenuItem>
+                    ))}
                   </Select>
                 </Stack>
               </Grid>
@@ -194,39 +225,52 @@ const AddEventFrom = ({ event, range, onCancel }) => {
               <Grid item xs={12}>
                 <Stack spacing={1.25}>
                   <InputLabel htmlFor="cal-target-id">Target ID</InputLabel>
-                  <TextField
-                    fullWidth
-                    id="cal-target-id"
-                    placeholder="Enter Target ID"
-                    {...getFieldProps('targetId')}
-                    error={Boolean(touched.targetId && errors.targetId)}
-                    helperText={touched.targetId && errors.targetId}
-                  />
+                  <Select fullWidth id="cal-target-id" {...getFieldProps('targetId')}>
+                    <MenuItem value="[choose]">[Choose a Target ID]</MenuItem>
+                    {targetIds.map((id, i) => (
+                      <MenuItem key={i} value={id}>
+                        {id}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  <FormHelperText error={Boolean(touched.targetId && errors.targetId)}>
+                    {touched.targetId && errors.targetId}
+                  </FormHelperText>
                 </Stack>
               </Grid>
 
               <Grid item xs={12}>
                 <Stack spacing={1.25}>
                   <InputLabel htmlFor="cal-command">Command</InputLabel>
-                  <Select fullWidth id="cal-command" {...getFieldProps('command')}>
+                  <Select fullWidth id="cal-command" {...getFieldProps('command')} onChange={handleCommandChange}>
                     <MenuItem value="[choose]">[Choose a command]</MenuItem>
-                    {['turn_on', 'turn_off'].map((c, i) => {
-                      return (
-                        <MenuItem key={i} value={c}>
-                          {c.toUpperCase()}
-                        </MenuItem>
-                      );
-                    })}
-                    {[...Array(101).keys()].map((c, i) => {
-                      return (
-                        <MenuItem key={i} value={`dim_${c.toString().padStart(2, '0')}`}>
-                          {`DIM_${c.toString().padStart(2, '0')}`}
-                        </MenuItem>
-                      );
-                    })}
+                    {['turn_on', 'turn_off'].map((c, i) => (
+                      <MenuItem key={i} value={c}>
+                        {c.toUpperCase()}
+                      </MenuItem>
+                    ))}
+                    <MenuItem value="dim_valor">Dim</MenuItem>
                   </Select>
                 </Stack>
               </Grid>
+
+              {showSlider && (
+                <Grid item xs={12}>
+                  <Stack spacing={1.25}>
+                    <InputLabel htmlFor="dim-value">Dim Value</InputLabel>
+                    <Slider
+                      value={dimValue}
+                      onChange={(e, value) => setDimValue(value)}
+                      aria-labelledby="dim-value"
+                      valueLabelDisplay="auto"
+                      step={1}
+                      marks
+                      min={0}
+                      max={100}
+                    />
+                  </Stack>
+                </Grid>
+              )}
 
               <Grid item xs={12} md={6}>
                 <Stack spacing={1.25}>

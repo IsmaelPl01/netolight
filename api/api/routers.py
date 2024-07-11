@@ -9,7 +9,7 @@ import sqlalchemy.exc
 
 import api.log
 import api.schemas
-import api.services
+import api.services 
 
 tokens = fastapi.APIRouter(
     prefix='/token',
@@ -64,6 +64,37 @@ async def me(
     """Get current user."""
     return current_user
 
+
+@users.post('')
+async def create_user(
+    user: api.schemas.UserCreate,
+    current_user: Annotated[
+        api.schemas.User,
+        fastapi.Depends(api.services.AuthService.get_current_user),
+    ],
+    user_serv: Annotated[
+        api.services.UserService, fastapi.Depends(api.services.UserService)
+    ],
+    account_serv: Annotated[
+        api.services.AccountService, fastapi.Depends(api.services.AccountService)
+    ]
+) -> int | None:
+    """Create a new user."""
+    if current_user.role != 'super-admin' and current_user.role != 'admin':
+        raise fastapi.HTTPException(
+            status_code=fastapi.status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions"
+        )
+
+    # Verificar que el account_id existe
+    account = await account_serv.get(user.account_id)
+    if account is None:
+        raise fastapi.HTTPException(
+            status_code=400,
+            detail="Invalid account_id"
+        )
+
+    return await user_serv.create(current_user, user)
 
 accounts = fastapi.APIRouter(
     prefix='/accounts',
@@ -418,6 +449,8 @@ async def get_gateway(
     return None
 
 
+
+
 def _gateway_from_cs(g: dict) -> api.schemas.Gateway:
     return api.schemas.Gateway(
         last_seen=g.get('lastSeenAt'),
@@ -429,6 +462,28 @@ def _gateway_from_cs(g: dict) -> api.schemas.Gateway:
         region_common_name=g.get('regionCommonName'),
     )
 
+@gateways.put('/{gid}')
+async def update_gateway(
+    gid: str,
+    gateway: api.schemas.GatewayUpdate,
+    current_user: Annotated[
+        api.schemas.User, fastapi.Depends(api.services.AuthService.get_current_user)
+    ],
+    account_serv: Annotated[
+        api.services.AccountService, fastapi.Depends(api.services.AccountService)
+    ],
+    gateway_serv: Annotated[
+        api.services.GatewayService, fastapi.Depends(api.services.GatewayService)
+    ],
+) -> dict:
+    """Update a gateway."""
+    if a := await account_serv.get(current_user.account_id):
+        return {
+            'id': gateway_serv.update(
+                a.cs_tenant_id, gid, gateway.name, gateway.description
+            )
+        }
+    return {'id': None} 
 
 @gateways.delete('/{gid}')
 async def delete_gateway(

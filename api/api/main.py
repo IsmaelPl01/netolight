@@ -1,5 +1,6 @@
 """This module provides the main entry point."""
 
+from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 import contextlib
 import time
@@ -18,6 +19,14 @@ import api.utils
 
 settings = api.config.get_settings()
 background_tasks = set()
+
+origins = [
+    "http://localhost",
+    "http://localhost:8080",
+    "http://localhost:5000",
+    # Puedes añadir más dominios si es necesario
+    "*",  # Permitirá el acceso desde cualquier origen, pero es menos seguro
+]
 
 
 async def run_agg_process() -> None:
@@ -144,7 +153,6 @@ async def proc_streetlamp_states() -> None:
         else:
             await asyncio.sleep(30)
 
-
 async def _start() -> None:
     api.log.logger.info('api %s started', settings.NL_VERSION)
 
@@ -162,11 +170,9 @@ async def _start() -> None:
     background_tasks.add(task)
     task.add_done_callback(background_tasks.discard)
 
-
 async def _stop() -> None:
     await api.postgres.get_engine().dispose()
     api.log.logger.info('api %s stopped', settings.NL_VERSION)
-
 
 @contextlib.asynccontextmanager
 async def _lifespan(app: fastapi.FastAPI) -> AsyncGenerator:  # noqa: ARG001
@@ -174,12 +180,20 @@ async def _lifespan(app: fastapi.FastAPI) -> AsyncGenerator:  # noqa: ARG001
     yield
     await _stop()
 
-
 app = fastapi.FastAPI(
     lifespan=_lifespan,
     title='NetoLight',
     description='NetoLight API',
     version=settings.NL_VERSION,
+)
+
+# Configurar CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,  # Puedes cambiar esto para especificar orígenes específicos
+    allow_credentials=True,
+    allow_methods=["*"],  # Permitir todos los métodos HTTP (GET, POST, etc.)
+    allow_headers=["*"],  # Permitir todos los headers
 )
 
 router = fastapi.APIRouter(prefix='/api')

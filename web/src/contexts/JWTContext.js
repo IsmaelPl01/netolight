@@ -74,7 +74,7 @@ export const JWTProvider = ({ children }) => {
     form.append('grant_type', 'password');
     form.append('username', username);
     form.append('password', password);
-    const tresp = await axios.post('http://localhost:5000/api/token', form);
+    const tresp = await axios.post('/api/token', form);
     setSession(tresp.data.access_token);
     const uresp = await axios.get('/api/users/me');
     dispatch({
@@ -91,8 +91,15 @@ export const JWTProvider = ({ children }) => {
     dispatch({ type: LOGOUT });
   };
 
-  const resetPassword = async () => {};
-
+  const resetPassword = async (email) => {
+    try {
+      const response = await axios.post('http://localhost:5001/forgot-password', { email });
+      console.log(response.data.message);
+    } catch (error) {
+      console.error('Error resetting password:', error);
+    }
+  };
+  
   const updateProfile = () => {};
 
   if (state.isInitialized !== undefined && !state.isInitialized) {

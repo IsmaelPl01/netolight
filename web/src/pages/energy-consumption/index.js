@@ -1,3 +1,5 @@
+/* eslint-disable no-console */
+
 import { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
 
@@ -14,28 +16,28 @@ const OverallConsumption = () => {
 
   const [report, setReport] = useState({
     currentMonth: {
-      month: '2023-06',
-      consumption: 0.0,
-      cost: 0.0,
-      co2: 0.0
+      month: '2024-06',
+      consumption: 500.0,
+      cost: 100.0,
+      co2: 5.0
     },
     lastMonth: {
-      month: '2023-05',
-      consumption: 0.0,
-      cost: 0.0,
-      co2: 0.0
+      month: '2024-05',
+      consumption: 480.0,
+      cost: 96.0,
+      co2: 4.8
     },
     sameMonthLastYear: {
-      month: '2022-06',
-      consumption: 0.0,
-      cost: 0.0,
-      co2: 0.0
+      month: '2023-06',
+      consumption: 450.0,
+      cost: 90.0,
+      co2: 4.5
     },
     lastYear: {
-      month: '2022-01',
-      consumption: 0.0,
-      cost: 0.0,
-      co2: 0.0
+      month: '2023-01',
+      consumption: 420.0,
+      cost: 84.0,
+      co2: 4.2
     }
   });
 

@@ -1,3 +1,5 @@
+/* eslint-disable no-console */
+
 import PropTypes from 'prop-types';
 import humps from 'humps';
 
@@ -33,7 +35,7 @@ function ReactTable({ columns, getHeaderProps }) {
   const sortBy = { id: 'name', desc: false };
 
   const [pageIndex, setPageIndex] = useState(0);
-  const [dimmingProfiles, setDimmingProfiles] = useState({ total: 0, data: [] });
+  const [dimmingProfiles, setDimmingProfiles] = useState({ total: 2, data: [] });
   const [dimmingProfile, setDimmingProfile] = useState(null);
   const [loading, setLoading] = useState('idle');
   const [opened, setOpened] = useState(false);
@@ -52,9 +54,10 @@ function ReactTable({ columns, getHeaderProps }) {
       try {
         setLoading('pending');
         const response = await axios.get(`/api/dimming_profiles/?skip=${skip}&limit=${limit}`);
+        const data = humps.camelizeKeys(response.data.data);
         setDimmingProfiles({
           total: response.data.total,
-          data: response.data.data.map(humps.camelizeKeys)
+          data: data
         });
         setLoading('idle');
       } catch (error) {
@@ -194,6 +197,49 @@ function ReactTable({ columns, getHeaderProps }) {
   useEffect(() => {
     dispatch(fetchDimmingProfiles(pageIndex * pageSize, pageSize));
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    // Set static data for testing purposes
+    setDimmingProfiles({
+      total: 2,
+      data: [
+        {
+          id: 1,
+          active: true,
+          name: 'Default',
+          description: 'NetoLight default dimming profile',
+          color: '#00bfff',
+          multicastGroupId: '75793097-19d8-4486-8ce2-84290e8d4511',
+          sunsetDimCmd0: 'TURN_ON',
+          sunsetDimCmd1: 'DIM_68',
+          h2000DimCmd: 'DIM_80',
+          h2200DimCmd: 'DIM_70',
+          h0000DimCmd: 'DIM_60',
+          h0200DimCmd: 'DIM_50',
+          h0400DimCmd: 'DIM_40',
+          sunriseDimCmd0: 'DIM_00',
+          sunriseDimCmd1: 'TURN_OFF'
+        },
+        {
+          id: 2,
+          active: true,
+          name: 'Evening',
+          description: 'Evening dimming profile',
+          color: '#ff5733',
+          multicastGroupId: '75793097-19d8-4486-8ce2-84290e8d4512',
+          sunsetDimCmd0: 'TURN_ON',
+          sunsetDimCmd1: 'DIM_80',
+          h2000DimCmd: 'DIM_60',
+          h2200DimCmd: 'DIM_50',
+          h0000DimCmd: 'DIM_40',
+          h0200DimCmd: 'DIM_30',
+          h0400DimCmd: 'DIM_20',
+          sunriseDimCmd0: 'DIM_10',
+          sunriseDimCmd1: 'TURN_OFF'
+        }
+      ]
+    });
   }, []);
 
   return (

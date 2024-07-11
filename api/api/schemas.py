@@ -219,6 +219,8 @@ class GatewayCreate(GatewayBase):
 
 class GatewayUpdate(GatewayBase):
     """This class represents a request to update a gateway."""
+    name: str
+    description: str | None = None
 
 
 class Gateway(GatewayBase):

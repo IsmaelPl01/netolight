@@ -1,5 +1,7 @@
-import humps from 'humps';
+/* eslint-disable no-unused-vars */
+/* eslint-disable no-console */
 
+import humps from 'humps';
 import moment from 'moment';
 import 'moment/locale/es';
 
@@ -49,37 +51,70 @@ const LoadingIndicator = () => {
 
 const initialEnergyOverview = {
   consumption: {
-    totalInKw: 0.0,
-    avgInWatts: 0.0
+    totalInKw: 500.0,
+    avgInWatts: 20.83
   },
   savings: {
-    percentage: 0.0,
-    avgInWatts: 0.0
+    percentage: 15.0,
+    avgInWatts: 3.125
   },
   dimmingSavings: {
-    percentage: 0.0,
-    avgInWatts: 0.0
+    percentage: 10.0,
+    avgInWatts: 2.083
   },
   co2Savings: {
-    totalInTon: 0.0,
-    avgInTon: 0.0
+    totalInTon: 1.5,
+    avgInTon: 0.0625
   }
 };
 
 const initialState = {
-  connectivitySeries: [0, 0, 0],
-  alarmsSeries: [0, 0, 0],
-  lifeSpanSeries: [0, 0, 0, 0],
+  connectivitySeries: [10, 5, 85],
+  alarmsSeries: [1, 2, 3],
+  lifeSpanSeries: [50, 30, 15, 5],
   energyOverview: {
     today: initialEnergyOverview,
     yesterday: initialEnergyOverview,
     lastWeek: initialEnergyOverview,
     lastMonth: initialEnergyOverview,
-    mtdDaily: [],
-    mtdWeekly: [],
-    ytdMonthly: []
+    mtdDaily: Array.from({ length: 30 }, (_, i) => ({
+      day: `2024-06-${i + 1}`,
+      consumption: Math.random() * 100 + 400,
+      savings: Math.random() * 15 + 5,
+      dimmingSavings: Math.random() * 10 + 5,
+      co2Savings: Math.random() * 1 + 0.5
+    })),
+    mtdWeekly: Array.from({ length: 4 }, (_, i) => ({
+      week: `Week ${i + 1}`,
+      consumption: Math.random() * 100 + 400,
+      savings: Math.random() * 15 + 5,
+      dimmingSavings: Math.random() * 10 + 5,
+      co2Savings: Math.random() * 1 + 0.5
+    })),
+    ytdMonthly: Array.from({ length: 12 }, (_, i) => ({
+      month: `2024-${i + 1 < 10 ? `0${i + 1}` : i + 1}`,
+      consumption: Math.random() * 100 + 400,
+      savings: Math.random() * 15 + 5,
+      dimmingSavings: Math.random() * 10 + 5,
+      co2Savings: Math.random() * 1 + 0.5
+    }))
   },
-  geoStates: []
+  geoStates: [
+    {
+      id: 1,
+      name: 'Streetlamp 1',
+      lat: 18.554172,
+      lon: -69.928796,
+      status: 'active'
+    },
+    {
+      id: 2,
+      name: 'Streetlamp 2',
+      lat: 18.554173,
+      lon: -69.928797,
+      status: 'inactive'
+    }
+  ]
 };
 
 const Dashboard = () => {
